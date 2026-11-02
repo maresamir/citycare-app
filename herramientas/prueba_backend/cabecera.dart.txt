@@ -1,0 +1,91 @@
+// Prueba local de las acciones contra el servidor simulado (city-care.v1.yaml).
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:prueba_envio/servidor_simulado.dart';
+
+class FFUploadedFile {
+  FFUploadedFile({this.name, this.bytes});
+  final String? name;
+  final List<int>? bytes;
+}
+
+class ResultadoEnvioStruct {
+  ResultadoEnvioStruct({this.exito, this.codigoHttp, this.id, this.folio, this.estado,
+      this.estadoEvidencia, this.creadoEn, this.mensaje});
+  final bool? exito;
+  final int? codigoHttp;
+  final int? id;
+  final String? folio;
+  final String? estado;
+  final String? estadoEvidencia;
+  final String? creadoEn;
+  final String? mensaje;
+  @override
+  String toString() => 'exito=$exito http=$codigoHttp folio=$folio estado=$estado mensaje="$mensaje"';
+}
+
+class UsuarioSesionStruct {
+  UsuarioSesionStruct({this.exito, this.codigoHttp, this.mensaje, this.token, this.nombre,
+      this.correo, this.telefono});
+  final bool? exito;
+  final int? codigoHttp;
+  final String? mensaje;
+  final String? token;
+  final String? nombre;
+  final String? correo;
+  final String? telefono;
+  @override
+  String toString() =>
+      'exito=$exito http=$codigoHttp token=${(token ?? '').isEmpty ? '(vacío)' : '${token!.substring(0, 6)}...'} nombre="$nombre" correo="$correo" tel="$telefono" mensaje="$mensaje"';
+}
+
+
+class ReporteStruct {
+  ReporteStruct({this.idServidor, this.folio, this.categoria, this.descripcion, this.direccion,
+      this.latitud, this.longitud, this.precisionUbicacion, this.origenUbicacion, this.estado,
+      this.fecha, this.tieneFoto, this.fotoUrl});
+  final String? idServidor;
+  final String? folio;
+  final String? categoria;
+  final String? descripcion;
+  final String? direccion;
+  final double? latitud;
+  final double? longitud;
+  final double? precisionUbicacion;
+  final String? origenUbicacion;
+  final String? estado;
+  final DateTime? fecha;
+  final bool? tieneFoto;
+  final String? fotoUrl;
+  @override
+  String toString() => 'id=$idServidor folio=$folio "$categoria" estado=$estado lat=$latitud lon=$longitud foto=${(fotoUrl ?? '').isNotEmpty}';
+}
+
+class ResultadoReportesStruct {
+  ResultadoReportesStruct({this.exito, this.codigoHttp, this.mensaje, this.reportes});
+  final bool? exito;
+  final int? codigoHttp;
+  final String? mensaje;
+  final List<ReporteStruct>? reportes;
+  @override
+  String toString() => 'exito=$exito http=$codigoHttp total=${reportes?.length} mensaje="$mensaje"';
+}
+
+class DetalleServidorStruct {
+  DetalleServidorStruct({this.exito, this.codigoHttp, this.mensaje, this.folio, this.estado,
+      this.fotoUrl, this.historial});
+  final bool? exito;
+  final int? codigoHttp;
+  final String? mensaje;
+  final String? folio;
+  final String? estado;
+  final String? fotoUrl;
+  final List<String>? historial;
+  @override
+  String toString() => 'exito=$exito http=$codigoHttp folio=$folio estado=$estado foto=$fotoUrl historial=$historial mensaje="$mensaje"';
+}
+

@@ -1,0 +1,17 @@
+Pruebas del backend de City Care (contrato city-care.v1.yaml + guía de
+conexión de Miguel, 1 nov 2026).
+
+- lib/servidor_simulado.dart: servidor que imita login, perfil, logout,
+  categorías (GET /report-categories), crear reporte (POST /reports),
+  Mis reportes (GET /reports, paginado) y detalle (GET /reports/:id con foto
+  e historial).
+- bin/servidor.dart: lo levanta en el puerto 3333
+  (dart run bin/servidor.dart 3333 --con-datos). Con --con-datos, Ana ya
+  tiene dos reportes (uno pendiente y otro en proceso).
+- bin/prueba_acciones.dart: prueba las acciones de la app contra el servidor
+  (dart run bin/prueba_acciones.dart). Se genera con generar_prueba.py a partir
+  de cabecera.dart.txt, ../acciones/*.dart.txt y pruebas_main.dart.txt.
+- Si cambias una acción en ../acciones, vuelve a correr python generar_prueba.py.
+
+Usuarios de prueba: ciudadano@citycare.com / Ciudadano123!,
+inactivo@citycare.com / Inactivo123!, admin@citycare.com / Admin123!

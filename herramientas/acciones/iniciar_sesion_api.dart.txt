@@ -1,0 +1,110 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+/// POST {urlApi}/auth/login con correo y contraseña. Devuelve el token y los
+/// datos del usuario, o un mensaje de error en español.
+Future<UsuarioSesionStruct> iniciarSesionApi(
+  String urlApi,
+  String correo,
+  String contrasena,
+) async {
+  // Errores del backend: {"error": {"code", "message", "details"}}.
+  String mensajeDeError(int codigo, String cuerpo) {
+    String? mensajeServidor;
+    try {
+      final json = jsonDecode(cuerpo);
+      final error = json is Map ? json['error'] : null;
+      if (error is Map && error['message'] is String) {
+        mensajeServidor = error['message'] as String;
+      }
+    } catch (_) {}
+    if (codigo == 400 || codigo == 401 || cuerpo.contains('E_INVALID_CREDENTIALS')) {
+      return 'Correo o contraseña incorrectos.';
+    }
+    if (codigo == 403) {
+      return 'Tu cuenta está desactivada o no tiene acceso. Contacta al administrador de City Care.';
+    }
+    if (codigo == 429) {
+      return 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
+    }
+    if (codigo == 422) {
+      return 'Revisa tu correo y tu contraseña.';
+    }
+    if (codigo >= 500) {
+      return 'El servidor no está disponible. Inténtalo más tarde.';
+    }
+    if (mensajeServidor != null && mensajeServidor.trim().isNotEmpty) {
+      return mensajeServidor;
+    }
+    return 'No se pudo iniciar sesión (error $codigo). Inténtalo otra vez.';
+  }
+
+  try {
+    final base = urlApi.trim().replaceAll(RegExp(r'/+$'), '');
+    final respuesta = await http
+        .post(
+          Uri.parse('$base/auth/login'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+          body: jsonEncode({'email': correo.trim(), 'password': contrasena}),
+        )
+        .timeout(const Duration(seconds: 30));
+    final cuerpo = utf8.decode(respuesta.bodyBytes, allowMalformed: true);
+    if (respuesta.statusCode != 200 && respuesta.statusCode != 201) {
+      return UsuarioSesionStruct(
+        exito: false,
+        codigoHttp: respuesta.statusCode,
+        mensaje: mensajeDeError(respuesta.statusCode, cuerpo),
+      );
+    }
+    // Respuesta: {"data": {"user": {...}, "token": "oat_..."}}.
+    var datos = <String, dynamic>{};
+    try {
+      final json = jsonDecode(cuerpo);
+      if (json is Map<String, dynamic>) {
+        datos = json['data'] is Map<String, dynamic>
+            ? json['data'] as Map<String, dynamic>
+            : json;
+      }
+    } catch (_) {}
+    final valorToken = datos['token'];
+    final token = valorToken is Map
+        ? '${valorToken['value'] ?? valorToken['token'] ?? ''}'
+        : '${valorToken ?? ''}';
+    if (token.isEmpty) {
+      return UsuarioSesionStruct(
+        exito: false,
+        codigoHttp: respuesta.statusCode,
+        mensaje: 'El servidor no devolvió un token de acceso. Avísale al administrador.',
+      );
+    }
+    final usuario = datos['user'] is Map ? datos['user'] as Map : <String, dynamic>{};
+    final nombre = '${usuario['firstName'] ?? ''} ${usuario['lastName'] ?? ''}'.trim();
+    return UsuarioSesionStruct(
+      exito: true,
+      codigoHttp: respuesta.statusCode,
+      token: token,
+      nombre: nombre.isEmpty ? 'Ciudadano' : nombre,
+      correo: '${usuario['email'] ?? correo.trim()}',
+      telefono: '${usuario['phoneNumber'] ?? ''}',
+      mensaje: '',
+    );
+  } on TimeoutException {
+    return UsuarioSesionStruct(
+      exito: false,
+      codigoHttp: 0,
+      mensaje: 'El servidor tardó demasiado en responder. Revisa tu conexión.',
+    );
+  } catch (_) {
+    return UsuarioSesionStruct(
+      exito: false,
+      codigoHttp: 0,
+      mensaje: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo otra vez.',
+    );
+  }
+}

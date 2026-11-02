@@ -1,0 +1,155 @@
+// ---------------------------------------------------------------------------
+// Casos de prueba contra el servidor simulado (city-care.v1.yaml)
+// ---------------------------------------------------------------------------
+final jpeg = [0xFF, 0xD8, 0xFF, 0xE0, ...List.filled(2048, 7)];
+final png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...List.filled(1024, 3)];
+final gif = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61, ...List.filled(512, 1)];
+var fallos = 0;
+
+void comprobar(String titulo, bool ok, Object detalle) {
+  if (!ok) fallos++;
+  print('${ok ? 'OK   ' : 'FALLA'} $titulo\n      -> $detalle');
+}
+
+Future<ResultadoEnvioStruct> reporte(
+  String url,
+  String token, {
+  String categoria = 'Bache',
+  String descripcion = 'Bache profundo frente a una escuela',
+  double lat = 20.67665,
+  double lon = -103.34751,
+  List<int>? foto,
+}) =>
+    enviarReporte(url, token, categoria, descripcion, 'Avenida Juárez 120, Guadalajara', lat,
+        lon, 12.5, 'gps', FFUploadedFile(name: '1730412345.jpg', bytes: foto ?? jpeg));
+
+Future<void> main() async {
+  final servidor = ServidorSimulado()..registro = false;
+  await servidor.iniciar();
+  final url = 'http://127.0.0.1:${servidor.puerto}/api/v1';
+  final caido = 'http://127.0.0.1:1/api/v1';
+
+  print('== Inicio de sesión (POST /auth/login)');
+  final login = await iniciarSesionApi(url, ' ciudadano@citycare.com ', 'Ciudadano123!');
+  comprobar('L1. Credenciales correctas (correo con espacios)',
+      login.exito == true && (login.token ?? '').startsWith('oat_') && login.nombre == 'Ana López' &&
+          login.telefono == '3312345678',
+      login);
+  final token = login.token ?? '';
+  var r = await iniciarSesionApi(url, 'ciudadano@citycare.com', 'otra');
+  comprobar('L2. Contraseña incorrecta (400)', r.codigoHttp == 400 && r.mensaje == 'Correo o contraseña incorrectos.', r);
+  r = await iniciarSesionApi(url, 'inactivo@citycare.com', 'Inactivo123!');
+  comprobar('L3. Cuenta desactivada (403)', r.codigoHttp == 403 && (r.mensaje ?? '').contains('desactivada'), r);
+  r = await iniciarSesionApi(url, '', 'x');
+  comprobar('L4. Correo vacío (422)', r.codigoHttp == 422 && r.mensaje == 'Revisa tu correo y tu contraseña.', r);
+  for (var i = 0; i < 5; i++) {
+    r = await iniciarSesionApi(url, 'prueba@citycare.com', 'mal$i');
+  }
+  r = await iniciarSesionApi(url, 'prueba@citycare.com', 'mal6');
+  comprobar('L5. Sexto intento en un minuto (429)', r.codigoHttp == 429 && (r.mensaje ?? '').contains('Demasiados intentos'), r);
+  r = await iniciarSesionApi(caido, 'ciudadano@citycare.com', 'Ciudadano123!');
+  comprobar('L6. Servidor apagado', r.codigoHttp == 0 && r.exito == false, r);
+  r = await iniciarSesionApi('$url/', 'ciudadano@citycare.com', 'Ciudadano123!');
+  comprobar('L7. URL con diagonal final', r.exito == true, r);
+
+  print('\n== Perfil (GET /account/profile)');
+  var p = await obtenerPerfil(url, token);
+  comprobar('P1. Token válido', p.exito == true && p.nombre == 'Ana López' && p.correo == 'ciudadano@citycare.com', p);
+  p = await obtenerPerfil(url, 'oat_falso');
+  comprobar('P2. Token inválido (401)', p.codigoHttp == 401 && (p.mensaje ?? '').contains('sesión venció'), p);
+  p = await obtenerPerfil(caido, token);
+  comprobar('P3. Servidor apagado', p.codigoHttp == 0, p);
+
+  print('\n== Reportes (POST /reports)');
+  var e = await reporte(url, token);
+  comprobar('R1. Reporte correcto', e.exito == true && e.folio == 'CC-2026-000001' && e.estado == 'Pendiente', e);
+  print('      campos recibidos: ${servidor.ultimosCampos}');
+  print('      archivo recibido: ${servidor.ultimoArchivo}');
+  e = await reporte(url, token, foto: png);
+  comprobar('R2. Foto PNG', e.exito == true && servidor.ultimoArchivo.contains('image/png'), e);
+  final admin = await iniciarSesionApi(url, 'admin@citycare.com', 'Admin123!');
+  e = await reporte(url, admin.token ?? '');
+  comprobar('R3. Cuenta sin permiso para reportar (403 sin cuerpo)', e.codigoHttp == 403 && (e.mensaje ?? '').contains('permiso'), e);
+  e = await reporte(url, token, categoria: 'Otro', descripcion: ' ');
+  comprobar('R4. Otro sin descripción', e.codigoHttp == 422 && (e.mensaje ?? '').contains('Describe brevemente'), e);
+  e = await reporte(url, token, lat: 0, lon: 0);
+  comprobar('R5. Coordenadas 0,0', e.codigoHttp == 422 && (e.mensaje ?? '').contains('ubicación no es válida'), e);
+  e = await reporte(url, token, foto: gif);
+  comprobar('R6. Foto no válida (details.field = foto)', e.codigoHttp == 422 && (e.mensaje ?? '').contains('fotografía no es válida'), e);
+  e = await reporte(url, token, categoria: 'Inundación');
+  comprobar('R7. Categoría inexistente', e.codigoHttp == 422 && (e.mensaje ?? '').contains('categoría no está disponible'), e);
+  e = await reporte(url, 'oat_falso');
+  comprobar('R8. Token inválido (401)', e.codigoHttp == 401 && (e.mensaje ?? '').contains('sesión venció'), e);
+
+  print('\n== Categorías del servidor (GET /report-categories)');
+  e = await reporte(url, token, categoria: 'alumbrado publico');
+  comprobar('C1. Nombre sin acentos se ajusta al catálogo',
+      e.exito == true && servidor.ultimosCampos['categoria'] == 'Alumbrado público', e);
+  e = await reporte(url, token, categoria: 'ÁRBOL CAÍDO');
+  comprobar('C2. Mayúsculas se ajustan al catálogo',
+      e.exito == true && servidor.ultimosCampos['categoria'] == 'Árbol caído', e);
+
+  print('\n== Mis reportes (GET /reports)');
+  final otra = await iniciarSesionApi(url, 'admin@citycare.com', 'Admin123!');
+  var lista = await listarMisReportes(url, token);
+  final propios = lista.reportes ?? [];
+  comprobar('M1. Lista solo los reportes propios (4), del más reciente al más antiguo',
+      lista.exito == true && propios.length == 4 && propios.first.categoria == 'Árbol caído', lista);
+  final primero = propios.isEmpty ? ReporteStruct() : propios.last;
+  comprobar('M2. Convierte los datos (decimales como texto, fecha, foto)',
+      primero.folio == 'CC-2026-000001' && primero.latitud == 20.67665 &&
+          primero.estado == 'Pendiente' && primero.fecha != null && primero.tieneFoto == true &&
+          primero.idServidor == '1',
+      primero);
+  servidor.cambiarEstado(1, 'in_progress', 'En proceso');
+  lista = await listarMisReportes(url, token);
+  comprobar('M3. Estado in_progress se muestra como "En proceso"',
+      (lista.reportes ?? []).any((r) => r.idServidor == '1' && r.estado == 'En proceso'), lista);
+  lista = await listarMisReportes(url, otra.token ?? '');
+  comprobar('M4. Otro usuario no ve reportes ajenos', lista.exito == true && (lista.reportes ?? []).isEmpty, lista);
+  for (var i = 0; i < 55; i++) {
+    servidor.reportes.add({
+      ...servidor.reportes.first,
+      'id': 1000 + i,
+      'folio': 'CC-2026-00${1000 + i}',
+      'creadoEn': '2026-10-01T10:00:00.000Z',
+    });
+  }
+  lista = await listarMisReportes(url, token);
+  comprobar('M5. Recorre varias páginas (59 reportes)', (lista.reportes ?? []).length == 59, lista);
+  lista = await listarMisReportes(url, 'oat_falso');
+  comprobar('M6. Token inválido (401)', lista.codigoHttp == 401 && (lista.mensaje ?? '').contains('sesión venció'), lista);
+  lista = await listarMisReportes(caido, token);
+  comprobar('M7. Servidor apagado', lista.codigoHttp == 0 && lista.exito == false, lista);
+
+  print('\n== Detalle (GET /reports/:id)');
+  var d = await obtenerDetalleReporte(url, token, '1');
+  comprobar('D1. Detalle con foto e historial',
+      d.exito == true && d.folio == 'CC-2026-000001' && d.estado == 'En proceso' &&
+          (d.fotoUrl ?? '').contains('/fotos/1.png') && (d.historial ?? []).length == 2 && (d.historial ?? ['']).first.startsWith('Pendiente') && (d.historial ?? []).last.contains('Cuadrilla asignada'),
+      d);
+  final foto = await http.get(Uri.parse(d.fotoUrl ?? 'http://127.0.0.1:1'));
+  comprobar('D2. La URL de la foto responde', foto.statusCode == 200 && foto.bodyBytes.isNotEmpty, foto.statusCode);
+  d = await obtenerDetalleReporte(url, otra.token ?? '', '1');
+  comprobar('D3. Reporte ajeno (404)', d.codigoHttp == 404 && (d.mensaje ?? '').contains('ya no está disponible'), d);
+  d = await obtenerDetalleReporte(url, token, '');
+  comprobar('D4. Sin id no llama al servidor', d.exito == false && d.codigoHttp == 0, d);
+  d = await obtenerDetalleReporte(url, 'oat_falso', '1');
+  comprobar('D5. Token inválido (401)', d.codigoHttp == 401, d);
+
+  print('\n== Cierre de sesión (POST /account/logout)');
+  var cerrado = await cerrarSesionApi(url, token);
+  comprobar('O1. Cerrar sesión con token válido', cerrado, cerrado);
+  p = await obtenerPerfil(url, token);
+  comprobar('O2. El token ya no sirve para el perfil (401)', p.codigoHttp == 401, p);
+  e = await reporte(url, token);
+  comprobar('O3. El token ya no sirve para reportar (401)', e.codigoHttp == 401, e);
+  cerrado = await cerrarSesionApi(url, '');
+  comprobar('O4. Sin token no llama al servidor', cerrado, cerrado);
+  cerrado = await cerrarSesionApi(caido, 'oat_x');
+  comprobar('O5. Servidor apagado (la app cierra sesión de todos modos)', cerrado == false, cerrado);
+
+  await servidor.detener();
+  print(fallos == 0 ? '\nTODOS LOS CASOS PASARON' : '\n$fallos CASO(S) FALLARON');
+  exit(fallos == 0 ? 0 : 1);
+}

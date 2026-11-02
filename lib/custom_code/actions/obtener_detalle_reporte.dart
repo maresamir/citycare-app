@@ -1,0 +1,132 @@
+// Automatic FlutterFlow imports
+import '/backend/schema/structs/index.dart';
+import '/flutter_flow/ff_builtin_enums.dart';
+import '/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
+import 'index.dart'; // Imports other custom actions
+import '/flutter_flow/custom_functions.dart'; // Imports custom functions
+import 'package:flutter/material.dart' hide RepeatMode;
+// Begin custom action code
+// DO NOT REMOVE OR MODIFY THE CODE ABOVE!
+
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+/// GET {urlApi}/reports/{id} con token Bearer: folio, estado, fotografía
+/// (URL firmada temporal) e historial de cambios de estado.
+Future<DetalleServidorStruct> obtenerDetalleReporte(
+  String urlApi,
+  String token,
+  String idServidor,
+) async {
+  String texto(Object? valor) => valor == null ? '' : '$valor'.trim();
+  String estadoVisible(Object? codigo, Object? etiqueta) {
+    switch (texto(codigo).toLowerCase()) {
+      case 'pending':
+        return 'Pendiente';
+      case 'in_progress':
+        return 'En proceso';
+      case 'resolved':
+        return 'Resuelto';
+    }
+    final valor = etiqueta is Map
+        ? texto(etiqueta['nombre'] ?? etiqueta['name'])
+        : texto(etiqueta);
+    return valor.isEmpty ? 'Pendiente' : valor;
+  }
+
+  if (idServidor.trim().isEmpty || token.isEmpty) {
+    return DetalleServidorStruct(
+        exito: false, codigoHttp: 0, mensaje: '', historial: []);
+  }
+  try {
+    final base = urlApi.trim().replaceAll(RegExp(r'/+$'), '');
+    final respuesta = await http.get(
+      Uri.parse('$base/reports/${Uri.encodeComponent(idServidor.trim())}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+    ).timeout(const Duration(seconds: 20));
+    if (respuesta.statusCode == 401) {
+      return DetalleServidorStruct(
+        exito: false,
+        codigoHttp: 401,
+        mensaje: 'Tu sesión venció. Inicia sesión nuevamente.',
+        historial: [],
+      );
+    }
+    if (respuesta.statusCode == 404) {
+      return DetalleServidorStruct(
+        exito: false,
+        codigoHttp: 404,
+        mensaje: 'Este reporte ya no está disponible.',
+        historial: [],
+      );
+    }
+    if (respuesta.statusCode != 200) {
+      return DetalleServidorStruct(
+        exito: false,
+        codigoHttp: respuesta.statusCode,
+        mensaje:
+            'No pudimos cargar el detalle (error ${respuesta.statusCode}).',
+        historial: [],
+      );
+    }
+    final json =
+        jsonDecode(utf8.decode(respuesta.bodyBytes, allowMalformed: true));
+    final item = json is Map && json['data'] is Map
+        ? json['data'] as Map
+        : (json is Map ? json : const {});
+    // Historial (contrato: estadoNuevoCodigo, estadoNuevo, observacion,
+    // creadoEn), del más antiguo al más reciente.
+    final historial = <String>[];
+    final cambios = item['historial'];
+    if (cambios is List) {
+      final ordenados = cambios.whereType<Map>().toList()
+        ..sort((a, b) => texto(a['creadoEn']).compareTo(texto(b['creadoEn'])));
+      for (final cambio in ordenados) {
+        final estado = estadoVisible(
+          cambio['estadoCodigo'] ?? cambio['estadoNuevoCodigo'],
+          cambio['estado'] ?? cambio['estadoNuevo'],
+        );
+        final fecha =
+            DateTime.tryParse(texto(cambio['creadoEn'] ?? cambio['fecha']))
+                ?.toLocal();
+        final nota = texto(
+            cambio['observacion'] ?? cambio['comentario'] ?? cambio['nota']);
+        final cuando = fecha == null
+            ? ''
+            : '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+        historial
+            .add([estado, cuando, nota].where((t) => t.isNotEmpty).join(' · '));
+      }
+    }
+    return DetalleServidorStruct(
+      exito: true,
+      codigoHttp: 200,
+      mensaje: '',
+      folio: texto(item['folio']),
+      estado: estadoVisible(item['estadoCodigo'], item['estado']),
+      fotoUrl: texto(item['fotoUrl']),
+      historial: historial,
+    );
+  } on TimeoutException {
+    return DetalleServidorStruct(
+      exito: false,
+      codigoHttp: 0,
+      mensaje: 'El servidor tardó demasiado en responder.',
+      historial: [],
+    );
+  } catch (_) {
+    return DetalleServidorStruct(
+      exito: false,
+      codigoHttp: 0,
+      mensaje: 'No pudimos conectar con el servidor.',
+      historial: [],
+    );
+  }
+}

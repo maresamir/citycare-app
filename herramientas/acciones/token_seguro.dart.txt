@@ -1,0 +1,41 @@
+// ===== guardarTokenSeguro
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+/// Guarda el token de sesión en el almacenamiento cifrado del sistema
+/// (Keystore en Android). Con token vacío lo borra.
+Future<void> guardarTokenSeguro(String token) async {
+  const almacen = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  try {
+    if (token.isEmpty) {
+      await almacen.delete(key: 'city_care_access_token');
+    } else {
+      await almacen.write(key: 'city_care_access_token', value: token);
+    }
+  } catch (_) {}
+}
+// ===== leerTokenSeguro
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Lee el token guardado con guardarTokenSeguro. Si encuentra el token de una
+/// versión anterior (sin cifrar), lo mueve al almacenamiento seguro.
+Future<String> leerTokenSeguro() async {
+  const almacen = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  try {
+    final preferencias = await SharedPreferences.getInstance();
+    final anterior = preferencias.getString('ff_tokenSesion') ?? '';
+    if (anterior.isNotEmpty) {
+      await almacen.write(key: 'city_care_access_token', value: anterior);
+    }
+    await preferencias.remove('ff_tokenSesion');
+  } catch (_) {}
+  try {
+    return await almacen.read(key: 'city_care_access_token') ?? '';
+  } catch (_) {
+    return '';
+  }
+}
