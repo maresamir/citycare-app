@@ -884,7 +884,7 @@ class _ReportarWidgetState extends State<ReportarWidget> {
                                                 ),
                                                 Text(
                                                   _model.textoUbicacion!,
-                                                  maxLines: 3,
+                                                  maxLines: 6,
                                                   style: FlutterFlowTheme.of(
                                                           context)
                                                       .titleSmall
@@ -1967,6 +1967,10 @@ class _ReportarWidgetState extends State<ReportarWidget> {
                                     .secondaryBackground,
                               ),
                               borderRadius: BorderRadius.circular(16.0),
+                              disabledColor:
+                                  FlutterFlowTheme.of(context).alternate,
+                              disabledTextColor:
+                                  FlutterFlowTheme.of(context).secondaryText,
                             ),
                           ),
                           if (!_model.ubicacionLista!)

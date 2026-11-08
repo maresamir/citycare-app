@@ -1,9 +1,11 @@
 import '/backend/schema/structs/index.dart';
 import '/components/tarjeta_reporte_widget.dart';
 import '/flutter_flow/ff_builtin_enums.dart';
+import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/flutter_flow/instant_timer.dart';
 import 'dart:ui';
 import '/custom_code/actions/index.dart' as actions;
 import '/flutter_flow/custom_functions.dart' as functions;
@@ -11,6 +13,7 @@ import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 import 'package:provider/provider.dart';
 import 'mis_reportes_model.dart';
 export 'mis_reportes_model.dart';
@@ -40,13 +43,19 @@ class _MisReportesWidgetState extends State<MisReportesWidget> {
     SchedulerBinding.instance.addPostFrameCallback((_) async {
       _model.urlMisReportes = await actions.urlServidor();
       if (!(_model.urlMisReportes == '')) {
+        _model.conServidor = true;
+        safeSetState(() {});
         if (!(FFAppState().tokenSesion == '')) {
+          _model.actualizando = true;
+          safeSetState(() {});
           _model.reportesServidor = await actions.listarMisReportes(
             (String? u) {
               return u ?? "";
             }(_model.urlMisReportes),
             FFAppState().tokenSesion,
           );
+          _model.actualizando = false;
+          safeSetState(() {});
           if (_model.reportesServidor!.exito) {
             FFAppState().reportes = _model.reportesServidor!.reportes
                 .toList()
@@ -75,8 +84,61 @@ class _MisReportesWidgetState extends State<MisReportesWidget> {
               safeSetState(() {});
 
               context.pushNamed(IniciarSesionWidget.routeName);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'No pudimos actualizar tus reportes. Te mostramos los últimos guardados.',
+                    style: TextStyle(),
+                  ),
+                  duration: Duration(milliseconds: 4000),
+                ),
+              );
             }
           }
+
+          _model.actualizarReportes = InstantTimer.periodic(
+            duration: Duration(milliseconds: 20000),
+            callback: (timer) async {
+              _model.reportesPeriodico = await actions.listarMisReportes(
+                (String? u) {
+                  return u ?? "";
+                }(_model.urlMisReportes),
+                FFAppState().tokenSesion,
+              );
+              if (_model.reportesPeriodico!.exito) {
+                FFAppState().reportes = _model.reportesPeriodico!.reportes
+                    .toList()
+                    .cast<ReporteStruct>();
+                safeSetState(() {});
+              } else {
+                if ((_model.reportesPeriodico?.codigoHttp == 401 ||
+                    _model.reportesPeriodico?.codigoHttp == 403)!) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        _model.reportesPeriodico!.mensaje,
+                        style: TextStyle(),
+                      ),
+                      duration: Duration(milliseconds: 4000),
+                    ),
+                  );
+                  FFAppState().reportes = [];
+                  safeSetState(() {});
+                  await actions.guardarTokenSeguro(
+                    '',
+                  );
+                  FFAppState().tokenSesion = '';
+                  safeSetState(() {});
+                  FFAppState().sesionIniciada = false;
+                  safeSetState(() {});
+
+                  context.pushNamed(IniciarSesionWidget.routeName);
+                }
+              }
+            },
+            startImmediately: false,
+          );
         }
       }
     });
@@ -202,6 +264,96 @@ class _MisReportesWidgetState extends State<MisReportesWidget> {
                               ].divide(SizedBox(height: 4.0)),
                             ),
                           ),
+                          if (_model.conServidor ?? true)
+                            FlutterFlowIconButton(
+                              borderRadius: 20.0,
+                              buttonSize: 56.0,
+                              fillColor: Color(0x33FFFFFF),
+                              icon: Icon(
+                                Icons.refresh,
+                                color: FlutterFlowTheme.of(context)
+                                    .secondaryBackground,
+                                size: 40.0,
+                              ),
+                              onPressed: _model.actualizando!
+                                  ? null
+                                  : () async {
+                                      _model.urlBotonReportes =
+                                          await actions.urlServidor();
+                                      _model.actualizando = true;
+                                      safeSetState(() {});
+                                      _model.reportesBoton =
+                                          await actions.listarMisReportes(
+                                        (String? u) {
+                                          return u ?? "";
+                                        }(_model.urlBotonReportes),
+                                        FFAppState().tokenSesion,
+                                      );
+                                      _model.actualizando = false;
+                                      safeSetState(() {});
+                                      if (_model.reportesBoton!.exito) {
+                                        FFAppState().reportes = _model
+                                            .reportesBoton!.reportes
+                                            .toList()
+                                            .cast<ReporteStruct>();
+                                        safeSetState(() {});
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Reportes actualizados',
+                                              style: TextStyle(),
+                                            ),
+                                            duration:
+                                                Duration(milliseconds: 4000),
+                                          ),
+                                        );
+                                      } else {
+                                        if ((_model.reportesBoton?.codigoHttp ==
+                                                401 ||
+                                            _model.reportesBoton?.codigoHttp ==
+                                                403)!) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                _model.reportesBoton!.mensaje,
+                                                style: TextStyle(),
+                                              ),
+                                              duration:
+                                                  Duration(milliseconds: 4000),
+                                            ),
+                                          );
+                                          FFAppState().reportes = [];
+                                          safeSetState(() {});
+                                          await actions.guardarTokenSeguro(
+                                            '',
+                                          );
+                                          FFAppState().tokenSesion = '';
+                                          safeSetState(() {});
+                                          FFAppState().sesionIniciada = false;
+                                          safeSetState(() {});
+
+                                          context.pushNamed(
+                                              IniciarSesionWidget.routeName);
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                _model.reportesBoton!.mensaje,
+                                                style: TextStyle(),
+                                              ),
+                                              duration:
+                                                  Duration(milliseconds: 4000),
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      safeSetState(() {});
+                                    },
+                            ),
                           Container(
                             width: 48.0,
                             height: 48.0,
@@ -645,27 +797,70 @@ class _MisReportesWidgetState extends State<MisReportesWidget> {
                   ),
                 ),
               ),
-              if (functions.contarPorEstado(
-                      FFAppState().reportes.toList(), _model.filtro) ==
-                  '0')
-                Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: (FFMainAxisAlignment.start).flutterValue,
-                    crossAxisAlignment:
-                        (FFCrossAxisAlignment.center).flutterValue,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Icon(
-                        Icons.assignment,
-                        color: FlutterFlowTheme.of(context).secondaryText,
-                        size: 56.0,
-                      ),
-                      Text(
-                        'No hay reportes aquí',
-                        style:
-                            FlutterFlowTheme.of(context).titleMedium.override(
+              if (_model.actualizando ?? true)
+                Row(
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: (FFMainAxisAlignment.center).flutterValue,
+                  crossAxisAlignment:
+                      (FFCrossAxisAlignment.center).flutterValue,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    CircularPercentIndicator(
+                      percent: 0.0,
+                      radius: 8.0,
+                      lineWidth: 2.0,
+                      animation: false,
+                      animateFromLastPercent: true,
+                    ),
+                    Text(
+                      'Actualizando...',
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            font: GoogleFonts.plusJakartaSans(
+                              fontWeight: FlutterFlowTheme.of(context)
+                                  .bodySmall
+                                  .fontWeight,
+                              fontStyle: FlutterFlowTheme.of(context)
+                                  .bodySmall
+                                  .fontStyle,
+                            ),
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            letterSpacing: 0.0,
+                            fontWeight: FlutterFlowTheme.of(context)
+                                .bodySmall
+                                .fontWeight,
+                            fontStyle: FlutterFlowTheme.of(context)
+                                .bodySmall
+                                .fontStyle,
+                          ),
+                    ),
+                  ].divide(SizedBox(width: 8.0)),
+                ),
+              if (!_model.actualizando!)
+                Container(
+                  child: Visibility(
+                    visible: functions.contarPorEstado(
+                            FFAppState().reportes.toList(), _model.filtro) ==
+                        '0',
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment:
+                            (FFMainAxisAlignment.start).flutterValue,
+                        crossAxisAlignment:
+                            (FFCrossAxisAlignment.center).flutterValue,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Icon(
+                            Icons.assignment,
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            size: 56.0,
+                          ),
+                          Text(
+                            'No hay reportes aquí',
+                            style: FlutterFlowTheme.of(context)
+                                .titleMedium
+                                .override(
                                   font: GoogleFonts.plusJakartaSans(
                                     fontWeight: FlutterFlowTheme.of(context)
                                         .titleMedium
@@ -682,30 +877,35 @@ class _MisReportesWidgetState extends State<MisReportesWidget> {
                                       .titleMedium
                                       .fontStyle,
                                 ),
+                          ),
+                          Text(
+                            'Crea un reporte y dale seguimiento desde esta pantalla.',
+                            textAlign: TextAlign.center,
+                            style: FlutterFlowTheme.of(context)
+                                .bodyMedium
+                                .override(
+                                  font: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FlutterFlowTheme.of(context)
+                                        .bodyMedium
+                                        .fontWeight,
+                                    fontStyle: FlutterFlowTheme.of(context)
+                                        .bodyMedium
+                                        .fontStyle,
+                                  ),
+                                  color: FlutterFlowTheme.of(context)
+                                      .secondaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FlutterFlowTheme.of(context)
+                                      .bodyMedium
+                                      .fontWeight,
+                                  fontStyle: FlutterFlowTheme.of(context)
+                                      .bodyMedium
+                                      .fontStyle,
+                                ),
+                          ),
+                        ].divide(SizedBox(height: 10.0)),
                       ),
-                      Text(
-                        'Crea un reporte y dale seguimiento desde esta pantalla.',
-                        textAlign: TextAlign.center,
-                        style: FlutterFlowTheme.of(context).bodyMedium.override(
-                              font: GoogleFonts.plusJakartaSans(
-                                fontWeight: FlutterFlowTheme.of(context)
-                                    .bodyMedium
-                                    .fontWeight,
-                                fontStyle: FlutterFlowTheme.of(context)
-                                    .bodyMedium
-                                    .fontStyle,
-                              ),
-                              color: FlutterFlowTheme.of(context).secondaryText,
-                              letterSpacing: 0.0,
-                              fontWeight: FlutterFlowTheme.of(context)
-                                  .bodyMedium
-                                  .fontWeight,
-                              fontStyle: FlutterFlowTheme.of(context)
-                                  .bodyMedium
-                                  .fontStyle,
-                            ),
-                      ),
-                    ].divide(SizedBox(height: 10.0)),
+                    ),
                   ),
                 ),
               Expanded(

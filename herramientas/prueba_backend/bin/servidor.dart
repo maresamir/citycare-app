@@ -8,7 +8,7 @@ import 'package:prueba_envio/servidor_simulado.dart';
 Future<void> main(List<String> args) async {
   final numero = args.where((a) => !a.startsWith('--')).firstOrNull;
   final puerto = numero == null ? 3333 : int.parse(numero);
-  final servidor = ServidorSimulado();
+  final servidor = ServidorSimulado()..fotoRota = args.contains('--foto-rota');
   await servidor.iniciar(puerto: puerto);
   if (args.contains('--con-datos')) {
     final ejemplos = [

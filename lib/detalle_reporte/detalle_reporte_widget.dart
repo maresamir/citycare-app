@@ -7,6 +7,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/custom_code/actions/index.dart' as actions;
+import '/custom_code/widgets/index.dart' as custom_widgets;
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/index.dart';
 import 'package:flutter/material.dart';
@@ -326,12 +327,14 @@ class _DetalleReporteWidgetState extends State<DetalleReporteWidget> {
                                     ),
                               ),
                             if (!(_model.fotoUrl == ''))
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(16.0),
-                                child: Image.network(
-                                  _model.fotoUrl!,
-                                  height: 220.0,
-                                  fit: BoxFit.cover,
+                              Container(
+                                height: 220.0,
+                                child: Container(
+                                  child: custom_widgets.FotoReporte(
+                                    url: (String? u) {
+                                      return u ?? "";
+                                    }(_model.fotoUrl),
+                                  ),
                                 ),
                               ),
                             if (((List<String>? h) {

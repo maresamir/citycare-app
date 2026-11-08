@@ -52,6 +52,8 @@ class ServidorSimulado {
   var siguienteReporte = 1;
   final reportes = <Map<String, Object?>>[];
   var registro = true;
+  // Simula una foto inaccesible (MinIO fuera de alcance).
+  var fotoRota = false;
   Map<String, String> ultimosCampos = {};
   String ultimoArchivo = '';
   late HttpServer _http;
@@ -101,6 +103,14 @@ class ServidorSimulado {
     final ruta = req.uri.path;
     if (ruta.startsWith('/caido')) {
       return _responder(req, 500, _error('E_INTERNAL', 'Internal server error'));
+    }
+    // Solo para pruebas: cambia el estado como lo haría un administrador.
+    final cambio = RegExp(r'^/pruebas/estado/(\d+)/(in_progress|resolved)$').firstMatch(ruta);
+    if (req.method == 'POST' && cambio != null) {
+      final codigo = cambio.group(2)!;
+      cambiarEstado(int.parse(cambio.group(1)!), codigo,
+          codigo == 'resolved' ? 'Resuelto' : 'En proceso');
+      return _responder(req, 200, {'ok': true});
     }
     if (req.method == 'POST' && ruta == '/api/v1/auth/login') return _login(req, cuerpo);
     if (req.method == 'GET' && ruta == '/api/v1/account/profile') {
@@ -322,9 +332,12 @@ class ServidorSimulado {
   Map<String, Object?> _publicoReporte(Map<String, Object?> r) => {
         for (final e in r.entries)
           if (e.key != 'userId') e.key: e.value,
+        'version': 1,
         'categoriaId': categorias.indexOf('${r['categoria']}') + 1,
         'categoriaCodigo': '${r['categoria']}'.toLowerCase().replaceAll(' ', '_'),
-        'fotoUrl': 'http://127.0.0.1:$puerto/fotos/${r['id']}.png?firma=temporal',
+        'fotoUrl': fotoRota
+            ? 'http://127.0.0.1:1/fotos/${r['id']}.png?firma=temporal'
+            : 'http://127.0.0.1:$puerto/fotos/${r['id']}.png?firma=temporal',
         'fotoUrlExpira': true,
         'actualizadoEn': r['creadoEn'],
       };

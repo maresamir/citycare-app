@@ -818,7 +818,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                         Text(
                                           'Mis reportes',
                                           textAlign: TextAlign.center,
-                                          maxLines: 1,
+                                          maxLines: 2,
                                           style: FlutterFlowTheme.of(context)
                                               .titleSmall
                                               .override(
@@ -835,6 +835,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                                           .titleSmall
                                                           .fontStyle,
                                                 ),
+                                                fontSize: 13.0,
                                                 letterSpacing: 0.0,
                                                 fontWeight:
                                                     FlutterFlowTheme.of(context)
@@ -914,7 +915,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                         Text(
                                           'Noticias GDL',
                                           textAlign: TextAlign.center,
-                                          maxLines: 1,
+                                          maxLines: 2,
                                           style: FlutterFlowTheme.of(context)
                                               .titleSmall
                                               .override(
@@ -931,6 +932,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                                           .titleSmall
                                                           .fontStyle,
                                                 ),
+                                                fontSize: 13.0,
                                                 letterSpacing: 0.0,
                                                 fontWeight:
                                                     FlutterFlowTheme.of(context)
@@ -1010,7 +1012,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                         Text(
                                           'Mi perfil',
                                           textAlign: TextAlign.center,
-                                          maxLines: 1,
+                                          maxLines: 2,
                                           style: FlutterFlowTheme.of(context)
                                               .titleSmall
                                               .override(
@@ -1027,6 +1029,7 @@ class _InicioWidgetState extends State<InicioWidget> {
                                                           .titleSmall
                                                           .fontStyle,
                                                 ),
+                                                fontSize: 13.0,
                                                 letterSpacing: 0.0,
                                                 fontWeight:
                                                     FlutterFlowTheme.of(context)

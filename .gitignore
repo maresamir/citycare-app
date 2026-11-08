@@ -48,7 +48,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-# Herramientas de prueba (Dart)
-herramientas/**/.dart_tool/
-herramientas/**/pubspec.lock

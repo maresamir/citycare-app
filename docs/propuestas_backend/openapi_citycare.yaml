@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: CityCare MX API
+  version: 1.0.0
+  description: >
+    Contrato entre la app CityCare MX (FlutterFlow) y el backend (AdonisJS).
+    Registro, inicio de sesión, crear reporte y listar los reportes del usuario.
+servers:
+  - url: https://CAMBIAR-POR-DOMINIO/api
+    description: Servidor público (HTTPS)
+  - url: http://localhost:3333/api
+    description: Desarrollo local
+
+paths:
+  /auth/registro:
+    post:
+      summary: Crear cuenta e iniciar sesión
+      operationId: registro
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistroEntrada' }
+      responses:
+        '201':
+          description: Cuenta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sesion' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginEntrada' }
+      responses:
+        '200':
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sesion' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+
+  /reportes:
+    get:
+      summary: Reportes del usuario del token, del más nuevo al más viejo
+      operationId: listarReportes
+      responses:
+        '200':
+          description: Lista (vacía si no hay reportes)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Reporte' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      summary: Crear reporte con foto
+      operationId: crearReporte
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ReporteEntrada' }
+      responses:
+        '201':
+          description: Reporte creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reporte' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '422': { $ref: '#/components/responses/Validacion' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    Categoria:
+      type: string
+      enum:
+        - Bache
+        - Alumbrado público
+        - Fuga de agua
+        - Basura acumulada
+        - Semáforo dañado
+        - Banqueta dañada
+        - Árbol caído
+        - Grafiti o vandalismo
+        - Otro
+
+    Estado:
+      type: string
+      enum: [Pendiente, En proceso, Resuelto]
+
+    RegistroEntrada:
+      type: object
+      required: [nombre, correo, telefono, contrasena, aceptaTerminos]
+      properties:
+        nombre: { type: string, minLength: 3, example: Juan Delgado }
+        correo: { type: string, format: email, example: juan@correo.com }
+        telefono: { type: string, pattern: '^[0-9]{10}$', example: '3312345678' }
+        contrasena: { type: string, minLength: 6, example: secreta123 }
+        aceptaTerminos: { type: boolean, enum: [true] }
+
+    LoginEntrada:
+      type: object
+      required: [correo, contrasena]
+      properties:
+        correo: { type: string, format: email }
+        contrasena: { type: string }
+
+    Usuario:
+      type: object
+      required: [id, nombre, correo, telefono]
+      properties:
+        id: { type: integer, example: 12 }
+        nombre: { type: string }
+        correo: { type: string }
+        telefono: { type: string }
+        colonia: { type: string, nullable: true }
+
+    Sesion:
+      type: object
+      required: [token, usuario]
+      properties:
+        token: { type: string, example: oat_MTI.abc123 }
+        usuario: { $ref: '#/components/schemas/Usuario' }
+
+    ReporteEntrada:
+      type: object
+      required: [categoria, descripcion, latitud, longitud, foto]
+      properties:
+        categoria: { $ref: '#/components/schemas/Categoria' }
+        descripcion: { type: string }
+        direccion: { type: string, description: Calculada por la app con OpenStreetMap }
+        latitud: { type: number, minimum: -90, maximum: 90, example: 20.67665 }
+        longitud: { type: number, minimum: -180, maximum: 180, example: -103.34751 }
+        foto: { type: string, format: binary, description: 'JPG o PNG, máximo 10 MB' }
+
+    Reporte:
+      type: object
+      required: [id, categoria, descripcion, latitud, longitud, estado, fotoUrl, creadoEn]
+      properties:
+        id: { type: integer, example: 45 }
+        categoria: { $ref: '#/components/schemas/Categoria' }
+        descripcion: { type: string }
+        direccion: { type: string, nullable: true }
+        latitud: { type: number }
+        longitud: { type: number }
+        estado: { $ref: '#/components/schemas/Estado' }
+        fotoUrl: { type: string, format: uri }
+        creadoEn: { type: string, format: date-time }
+
+    Errores:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+              rule: { type: string }
+
+  responses:
+    NoAutorizado:
+      description: Sin token, token vencido o credenciales incorrectas
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Errores' }
+    Validacion:
+      description: Algún campo no pasa la validación
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Errores' }
+
+security:
+  - bearerAuth: []

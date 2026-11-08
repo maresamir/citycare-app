@@ -1,4 +1,4 @@
-# CityCare MX: estado del proyecto (1 nov 2026)
+# CityCare MX: estado del proyecto (5 nov 2026)
 
 **Objetivo:** app en FlutterFlow (proyecto `citycaremx-mjsptk`) donde un ciudadano de Guadalajara inicia sesión, crea reportes de incidencias (categoría, foto, GPS, descripción) que llegan al backend de Miguel (AdonisJS + MySQL + MinIO), da seguimiento a sus reportes, lee noticias de GDL y consulta su perfil. Al final se exporta como APK.
 
@@ -19,7 +19,7 @@
   | Abrir Perfil | `GET /account/profile` |
   | Cerrar sesión | `POST /account/logout` |
   | Tocar Enviar en Reportar (primero ajusta el nombre de la categoría al catálogo) | `GET /report-categories` y `POST /reports` |
-  | Abrir Inicio o Mis reportes | `GET /reports` (solo los reportes propios, todas las páginas) |
+  | Abrir Inicio o Mis reportes; botón ⟳; cada 20 s con Mis reportes abierta | `GET /reports` (solo los reportes propios, todas las páginas) |
   | Abrir el detalle de un reporte (foto, folio, historial) | `GET /reports/:id` |
 
 - **Seguridad de la sesión, según la guía:**
@@ -56,6 +56,16 @@
 3. **Fotos de MinIO:** con `MINIO_PUBLIC_ENDPOINT=10.0.2.2`, la foto del detalle solo carga en su emulador. En un celular real o en el navegador debe apuntar a una dirección accesible.
 4. **El contrato OpenAPI actualizado** (la guía dice que ya existe). Sirve para confirmar los campos de `GET /reports` y `GET /reports/:id`; la app ya acepta las variantes más comunes.
 5. **Contraseña del usuario de prueba** `ciudadano@citycare.com`: está en su `.env` y no viene en la guía.
+
+## ⚠️ Antes de la versión final
+Para compilar el APK, sigue [COMPILAR_APK.md](COMPILAR_APK.md).
+1. **`urlApi` usa `https://lynn-likewise-training-vitamins.trycloudflare.com/api/v1`.** Si Miguel reinicia el túnel, hay que poner la dirección nueva y generar otra APK.
+   - **En el navegador no se usa GPS:** la app envía una ubicación fija del centro de Guadalajara con origen `manual`. La APK sigue exigiendo GPS real.
+   - **Error conocido:** la descripción es obligatoria en todas las categorías, aunque la pantalla dice que solo en "Otro".
+2. **Ícono de la app:** sube `icono_citycare_1024.png` en FlutterFlow (Settings and Integrations › App Assets › Launcher Icon).
+3. **HTTP local permitido en Android** (`usesCleartextTraffic`). Se quita cuando la API y las fotos usen HTTPS.
+
+El envío sin GPS (temporal) **ya se quitó**: reportar vuelve a exigir ubicación real.
 
 ## Otros pendientes
 - El plan de prueba Growth del equipo vence el **14 de noviembre**. La exportación del código y las opciones de Android dependen de él.

@@ -1,0 +1,53 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geolocator/geolocator.dart';
+
+Future<UbicacionGpsStruct> obtenerUbicacionGps() async {
+  // En el navegador (modo Run) no se consulta el GPS: se usa el centro de
+  // Guadalajara. En Android siempre se lee el GPS real.
+  if (kIsWeb) {
+    return UbicacionGpsStruct(
+      estado: 'ok',
+      latitud: 20.67665,
+      longitud: -103.34751,
+      precision: 0,
+    );
+  }
+  try {
+    final servicioActivo = await Geolocator.isLocationServiceEnabled();
+    if (!servicioActivo) {
+      return UbicacionGpsStruct(estado: 'servicio_desactivado');
+    }
+    var permiso = await Geolocator.checkPermission();
+    if (permiso == LocationPermission.denied) {
+      permiso = await Geolocator.requestPermission();
+    }
+    if (permiso == LocationPermission.deniedForever) {
+      return UbicacionGpsStruct(estado: 'permiso_denegado_siempre');
+    }
+    if (permiso != LocationPermission.always &&
+        permiso != LocationPermission.whileInUse) {
+      return UbicacionGpsStruct(estado: 'permiso_denegado');
+    }
+    final posicion = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 20),
+      ),
+    );
+    if (posicion.latitude == 0 && posicion.longitude == 0) {
+      return UbicacionGpsStruct(estado: 'error');
+    }
+    return UbicacionGpsStruct(
+      estado: 'ok',
+      latitud: posicion.latitude,
+      longitud: posicion.longitude,
+      precision: posicion.accuracy,
+    );
+  } on LocationServiceDisabledException {
+    return UbicacionGpsStruct(estado: 'servicio_desactivado');
+  } on PermissionDeniedException {
+    return UbicacionGpsStruct(estado: 'permiso_denegado');
+  } catch (_) {
+    return UbicacionGpsStruct(estado: 'error');
+  }
+}

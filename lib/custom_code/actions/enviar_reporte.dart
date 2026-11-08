@@ -12,6 +12,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -136,7 +137,8 @@ Future<ResultadoEnvioStruct> enviarReporte(
       ..fields['categoria'] = categoriaServidor
       ..fields['latitud'] = latitud.toString()
       ..fields['longitud'] = longitud.toString()
-      ..fields['origenUbicacion'] = origenUbicacion;
+      // En el navegador la ubicación es fija: no se presenta como lectura de GPS.
+      ..fields['origenUbicacion'] = kIsWeb ? 'manual' : origenUbicacion;
     final textoDescripcion = descripcion.trim();
     if (textoDescripcion.isNotEmpty) {
       solicitud.fields['descripcion'] = textoDescripcion;
@@ -147,7 +149,8 @@ Future<ResultadoEnvioStruct> enviarReporte(
           ? textoDireccion.substring(0, 500)
           : textoDireccion;
     }
-    if (precisionUbicacion.isFinite &&
+    if (!kIsWeb &&
+        precisionUbicacion.isFinite &&
         precisionUbicacion >= 0 &&
         precisionUbicacion <= 100000) {
       solicitud.fields['precisionUbicacion'] = precisionUbicacion.toString();

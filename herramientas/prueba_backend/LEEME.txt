@@ -11,7 +11,8 @@ conexión de Miguel, 1 nov 2026).
 - bin/prueba_acciones.dart: prueba las acciones de la app contra el servidor
   (dart run bin/prueba_acciones.dart). Se genera con generar_prueba.py a partir
   de cabecera.dart.txt, ../acciones/*.dart.txt y pruebas_main.dart.txt.
-- Si cambias una acción en ../acciones, vuelve a correr python generar_prueba.py.
+- Si cambias una acción: python ../acciones/generar_codigo_dsl.py (copia el
+  código a dsl/codigo_acciones.dart) y python generar_prueba.py.
 
 Usuarios de prueba: ciudadano@citycare.com / Ciudadano123!,
 inactivo@citycare.com / Inactivo123!, admin@citycare.com / Admin123!

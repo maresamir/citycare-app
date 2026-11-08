@@ -180,7 +180,7 @@ class _NavBarPageState extends State<NavBarPage> {
             icon: Icon(
               Icons.assignment,
             ),
-            label: 'Mis reportes',
+            label: 'Reportes',
             tooltip: '',
           ),
           BottomNavigationBarItem(

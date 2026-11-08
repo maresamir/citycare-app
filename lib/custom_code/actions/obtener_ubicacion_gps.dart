@@ -9,9 +9,20 @@ import 'package:flutter/material.dart' hide RepeatMode;
 // Begin custom action code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 
 Future<UbicacionGpsStruct> obtenerUbicacionGps() async {
+  // En el navegador (modo Run) no se consulta el GPS: se usa el centro de
+  // Guadalajara. En Android siempre se lee el GPS real.
+  if (kIsWeb) {
+    return UbicacionGpsStruct(
+      estado: 'ok',
+      latitud: 20.67665,
+      longitud: -103.34751,
+      precision: 0,
+    );
+  }
   try {
     final servicioActivo = await Geolocator.isLocationServiceEnabled();
     if (!servicioActivo) {
