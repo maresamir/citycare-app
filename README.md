@@ -1,3 +1,11 @@
+# ⚠️ Este repositorio se mudó
+
+El proyecto CityCare MX ahora está en **https://github.com/bytethebee/citycare-app**.
+
+Este repositorio quedó archivado (solo lectura) y ya no se actualiza.
+
+---
+
 # CityCare MX: app móvil (Flutter)
 
 App ciudadana de City Care para Guadalajara. Permite iniciar sesión, reportar incidencias (categoría, foto, GPS y descripción), dar seguimiento a los reportes propios, leer noticias de la ciudad y consultar el perfil.
